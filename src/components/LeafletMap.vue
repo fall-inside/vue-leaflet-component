@@ -9,13 +9,19 @@
         group
         mandatory
       >
-        <v-btn>
+        <v-btn
+            @click="startDrawPolygon"
+        >
           <v-icon>mdi-shape-polygon-plus</v-icon>
         </v-btn>
-        <v-btn>
+        <v-btn
+            @click="startDrawRectangle"
+        >
           <v-icon>mdi-shape-square-plus</v-icon>
         </v-btn>
-        <v-btn>
+        <v-btn
+            @click="startDrawCircle"
+        >
           <v-icon>mdi-shape-circle-plus</v-icon>
         </v-btn>
       </v-btn-toggle>
@@ -41,6 +47,7 @@
       </v-btn>
       <v-btn
           icon
+          @click="clearMapArea"
       >
         <v-icon>
           mdi-eraser
@@ -53,8 +60,10 @@
         :zoom="zoom"
         :center="center"
         :options="mapOptions"
+        @click="drawArea",
         @update:center="centerUpdate"
         @update:zoom="zoomUpdate"
+
       >
         <l-tile-layer
           :url="url"
@@ -91,18 +100,40 @@ export default {
       mapOptions: {
         zoomSnap: 0.5
       },
-      mapModificator: 0,
+      mapArea: {},
+      mapModifier: 0,
       markers: [],
       showRadiusEditor: false
     }
   },
+
   methods: {
     addMarker (markerInfo) {
       console.debug(markerInfo);
     },
 
+    clearMapArea () {
+
+    },
+
+    drawArea (event) {
+
+    },
+
     getIcon (iconName) {
       console.debug(iconName);
+    },
+
+    startDrawCircle () {
+
+    },
+
+    startDrawPolygon () {
+
+    },
+
+    startDrawRectangle () {
+
     },
 
     zoomUpdate (zoom) {
