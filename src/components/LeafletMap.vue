@@ -70,7 +70,10 @@
           :lat-lng="item.latlng"
           :icon="dotIcon"
         />
-        <l-rectangle :bounds="mapArea" :l-style="mapAreaStyle"></l-rectangle>
+        <l-rectangle
+            :bounds="rect.bounds"
+            :l-style="rect.style">
+        </l-rectangle>
       </l-map>
     </div>
   </v-col>
@@ -114,6 +117,10 @@ export default {
       mapModifier: 0, // 1 - rect, 2 - circle, 3 - polygon
       toggledBtn: undefined,
       markers: [],
+      rect: {
+        bounds: [[0, 0], [0, 0]],
+        style: { color: 'red', weight: 0 }
+      },
       showRadiusEditor: false
     }
   },
@@ -170,8 +177,11 @@ export default {
 
             // if there are 2 dots draw rect and remove dots
             if (this.dotMarkers.length === 2) {
-              this.dotMarkers.forEach(item => this.mapArea.push(item.latlng));
-              console.debug(this.mapArea);
+              for (let i = 0; i < this.dotMarkers.length; i++) {
+                this.rect.bounds.splice(i, 1, [this.dotMarkers[i].latlng.lat, this.dotMarkers[i].latlng.lng]);
+              }
+              this.rect.style.weight = 3;
+              this.dotMarkers = [];
             }
           }
           break;
