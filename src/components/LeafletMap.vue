@@ -33,8 +33,9 @@
         ></v-text-field>
       </v-col>
       <v-btn
-          v-if="isDrawing"
+          v-if="mapModifier === 3 && dotMarkers.length !== 0"
           icon
+          @click="finishPolygon"
       >
         <v-icon small> mdi-check </v-icon>
       </v-btn>
@@ -72,8 +73,12 @@
         />
         <l-rectangle
             :bounds="rect.bounds"
-            :l-style="rect.style">
-        </l-rectangle>
+            :l-style="rect.style"
+        ></l-rectangle>
+        <l-polygon
+            :lat-lngs="polygon.latlngs"
+            :l-style="polygon.style"
+        ></l-polygon>
       </l-map>
     </div>
   </v-col>
@@ -81,7 +86,7 @@
 
 <script>
 import { latLng, divIcon } from 'leaflet'
-import { LMap, LTileLayer, LMarker, LRectangle } from 'vue2-leaflet'
+import { LMap, LTileLayer, LMarker, LPolygon, LRectangle } from 'vue2-leaflet'
 
 export default {
   name: 'LeafletMap',
@@ -89,6 +94,7 @@ export default {
     LMap,
     LTileLayer,
     LMarker,
+    LPolygon,
     LRectangle
   },
   data () {
@@ -117,6 +123,10 @@ export default {
       mapModifier: 0, // 1 - rect, 2 - circle, 3 - polygon
       toggledBtn: undefined,
       markers: [],
+      polygon: {
+        latlngs: [],
+        style: { color: 'red', weight: 0 }
+      },
       rect: {
         bounds: [[0, 0], [0, 0]],
         style: { color: 'red', weight: 0 }
@@ -152,10 +162,20 @@ export default {
 
     clearMapArea () {
       console.debug('Remove all drawings');
+
       this.dotMarkers = [];
       this.isDrawing = false;
       this.mapModifier = 0;
-      this.mapArea = [];
+      this.toggledBtn = undefined;
+
+      // clear rect
+      for (let i = 0; i < this.rect.bounds.length; i++) {
+        this.rect.bounds.splice(i, 1, [0, 0]);
+      }
+      this.rect.style.weight = 0;
+
+      // clear polygon
+      this.polygon.latlngs = [];
       this.circleRadius = 0;
     },
 
@@ -180,19 +200,27 @@ export default {
               for (let i = 0; i < this.dotMarkers.length; i++) {
                 this.rect.bounds.splice(i, 1, [this.dotMarkers[i].latlng.lat, this.dotMarkers[i].latlng.lng]);
               }
-              this.rect.style.weight = 3;
+              this.rect.style.weight = 2;
               this.dotMarkers = [];
             }
           }
           break;
-        // case 2: {
-        //
-        // }
+        case 3: {
+            this.dotMarkers.push(marker);
+          }
+          break;
       }
     },
 
-    getIcon (iconName) {
-      console.debug(iconName);
+    // create polygon based on dotMarkers
+    finishPolygon () {
+      let latlngArray = [];
+      for (let i = 0; i < this.dotMarkers.length; i++) {
+        latlngArray.push([this.dotMarkers[i].latlng.lat, this.dotMarkers[i].latlng.lng]);
+      }
+      this.polygon.latlngs.push(latlngArray);
+      this.polygon.style.weight = 2;
+      this.dotMarkers = [];
     },
 
     startDrawCircle () {
