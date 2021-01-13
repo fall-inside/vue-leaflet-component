@@ -5,33 +5,27 @@
         flat
         dense>
       <v-btn-toggle
-        dense
-        group
-        mandatory
+          v-model = "toggledBtn"
+          dense
+          group
       >
-        <v-btn
-            @click="startDrawPolygon"
-        >
-          <v-icon>mdi-shape-polygon-plus</v-icon>
+        <v-btn>
+          <v-icon small> mdi-shape-square-plus </v-icon>
         </v-btn>
-        <v-btn
-            @click="startDrawRectangle"
-        >
-          <v-icon>mdi-shape-square-plus</v-icon>
+        <v-btn>
+          <v-icon small> mdi-shape-circle-plus </v-icon>
         </v-btn>
-        <v-btn
-            @click="startDrawCircle"
-        >
-          <v-icon>mdi-shape-circle-plus</v-icon>
+        <v-btn>
+          <v-icon small> mdi-shape-polygon-plus </v-icon>
         </v-btn>
       </v-btn-toggle>
       <v-col
+          v-if="mapModifier === 2"
           cols="12"
           sm="2"
           md="1"
       >
         <v-text-field
-            v-if="circleDrawing"
             v-model="circleRadius"
             type="number"
             hide-details
@@ -39,19 +33,21 @@
         ></v-text-field>
       </v-col>
       <v-btn
+          v-if="isDrawing"
+          icon
+      >
+        <v-icon small> mdi-check </v-icon>
+      </v-btn>
+      <v-btn
         icon
       >
-        <v-icon>
-          mdi-content-save
-        </v-icon>
+        <v-icon small> mdi-content-save </v-icon>
       </v-btn>
       <v-btn
           icon
           @click="clearMapArea"
       >
-        <v-icon>
-          mdi-eraser
-        </v-icon>
+        <v-icon small> mdi-eraser </v-icon>
       </v-btn>
 
     </v-toolbar>
@@ -60,7 +56,7 @@
         :zoom="zoom"
         :center="center"
         :options="mapOptions"
-        @click="drawArea",
+        @click="drawArea"
         @update:center="centerUpdate"
         @update:zoom="zoomUpdate"
 
@@ -69,26 +65,28 @@
           :url="url"
         />
         <l-marker
-          v-for="(item, index) in markers"
+          v-for="(item, index) in dotMarkers"
           :key="'marker-' + index"
-          :lat-lng="item.location"
-          :icon="getIcon(item)">
-        </l-marker>
+          :lat-lng="item.latlng"
+          :icon="dotIcon"
+        />
+        <l-rectangle :bounds="mapArea" :l-style="mapAreaStyle"></l-rectangle>
       </l-map>
     </div>
   </v-col>
 </template>
 
 <script>
-import { latLng } from 'leaflet'
-import { LMap, LTileLayer, LMarker } from 'vue2-leaflet'
+import { latLng, divIcon } from 'leaflet'
+import { LMap, LTileLayer, LMarker, LRectangle } from 'vue2-leaflet'
 
 export default {
   name: 'LeafletMap',
   components: {
     LMap,
     LTileLayer,
-    LMarker
+    LMarker,
+    LRectangle
   },
   data () {
     return {
@@ -100,10 +98,43 @@ export default {
       mapOptions: {
         zoomSnap: 0.5
       },
-      mapArea: {},
-      mapModifier: 0,
+      circleRadius: 0,
+      dotIcon: divIcon({
+        iconUrl: 'circle-icon.png',
+        iconSize: [16, 16],
+        className: "dot-marker",
+        html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 6 6" height="12" width="12">
+                    <circle cx="3" cy="3"  r="3" style="fill:red; fill-opacity:0.8;" />
+              </svg>`
+      }),
+      dotMarkers:[],
+      isDrawing: false,
+      mapArea: [],
+      mapAreaStyle: { color: 'red', weight: 3 },
+      mapModifier: 0, // 1 - rect, 2 - circle, 3 - polygon
+      toggledBtn: undefined,
       markers: [],
       showRadiusEditor: false
+    }
+  },
+  watch: {
+    toggledBtn: function () {
+      console.debug(this.toggledBtn);
+      if (this.toggledBtn === undefined) {
+        console.debug('no btns clicked');
+        this.clearMapArea();
+      } else {
+        this.mapModifier = this.toggledBtn + 1;
+        switch (this.toggledBtn) {
+          case 0: this.startDrawRectangle();
+            break;
+          case 1: this.startDrawCircle();
+            break;
+          case 2: this.startDrawPolygon();
+            break;
+        }
+      }
+
     }
   },
 
@@ -113,11 +144,41 @@ export default {
     },
 
     clearMapArea () {
-
+      console.debug('Remove all drawings');
+      this.dotMarkers = [];
+      this.isDrawing = false;
+      this.mapModifier = 0;
+      this.mapArea = [];
+      this.circleRadius = 0;
     },
 
     drawArea (event) {
+      if (!this.isDrawing) {
+        return;
+      }
+      console.debug('Draw on the map, coord: ' + event.latlng);
+      let marker = {
+                      latlng: event.latlng,
+                      icon: this.dotIcon
+                   };
+      switch (this.mapModifier) {
+        case 1: {
+            if (this.dotMarkers.length >= 2) {
+              this.dotMarkers = [];
+            }
+            this.dotMarkers.push(marker);
 
+            // if there are 2 dots draw rect and remove dots
+            if (this.dotMarkers.length === 2) {
+              this.dotMarkers.forEach(item => this.mapArea.push(item.latlng));
+              console.debug(this.mapArea);
+            }
+          }
+          break;
+        // case 2: {
+        //
+        // }
+      }
     },
 
     getIcon (iconName) {
@@ -125,15 +186,30 @@ export default {
     },
 
     startDrawCircle () {
-
+      console.debug('Start draw circle');
+      if (this.isDrawing) {
+        this.clearMapArea();
+      }
+      this.isDrawing = true;
+      this.mapModifier = 2;
     },
 
     startDrawPolygon () {
-
+      console.debug('Start draw polygon');
+      if (this.isDrawing) {
+        this.clearMapArea();
+      }
+      this.isDrawing = true;
+      this.mapModifier = 3;
     },
 
     startDrawRectangle () {
-
+      console.debug('Start draw rect');
+      if (this.isDrawing) {
+        this.clearMapArea();
+      }
+      this.isDrawing = true;
+      this.mapModifier = 1
     },
 
     zoomUpdate (zoom) {
@@ -152,8 +228,7 @@ export default {
    width: 600px;
    height: 600px;
  }
-
- .btns {
-   flex-direction: column;
+ .dot-marker {
+   background-color: transparent;
  }
 </style>
