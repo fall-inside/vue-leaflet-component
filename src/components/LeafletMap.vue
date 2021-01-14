@@ -54,20 +54,20 @@
     </v-toolbar>
     <div class="leaflet-map">
       <l-map
-        :zoom="zoom"
-        :center="center"
-        :options="mapOptions"
-        @click="drawArea"
-        @update:center="centerUpdate"
-        @update:zoom="zoomUpdate"
-
+          :center="center"
+          :options="mapOptions"
+          :zoom="zoom"
+          @click="drawArea"
+          @update:bounds="mapBoundsUpdate"
+          @update:center="mapCenterUpdate"
+          @update:zoom="mapZoomUpdate"
       >
         <l-tile-layer
           :url="url"
         />
         <!--    markers for cellphones    -->
         <l-marker
-            v-for="(item, index) in abonentsMarkers"
+            v-for="(item, index) in cellphoneMarkers"
             :key="'marker-' + index"
             :lat-lng="item.latlng"
             :icon="cellphoneIcon"
@@ -89,7 +89,7 @@
         <l-circle
             :lat-lng="circle.center"
             :radius="circle.radius"
-            color="red"
+            :l-style="circle.style"
         />
         <l-polygon
             :lat-lngs="polygon.latlngs"
@@ -120,6 +120,7 @@ export default {
   },
   data () {
     return {
+      // map
       zoom: 13,
       center: latLng(47.41322, -1.219482),
       url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -128,11 +129,15 @@ export default {
       mapOptions: {
         zoomSnap: 0.5
       },
+
+      // circle area
       circle: {
         center: [0, 0],
         radius: 100,
         style: { color: 'red', weight: 0 }
       },
+
+      // icons
       cellphoneIcon: divIcon({
         iconSize: [30, 30],
         iconAnchor: [15, 26],
@@ -200,22 +205,27 @@ export default {
                     <circle cx="3" cy="3"  r="3" style="fill:red; fill-opacity:0.8;" />
               </svg>`
       }),
+
+      // array for rect and polygon dots
       dotMarkers:[],
       isDrawing: false,
-      mapArea: [],
-      mapAreaStyle: { color: 'red', weight: 3 },
+      lastQueryTimeStamp: 0,
       mapModifier: 0, // 1 - rect, 2 - circle, 3 - polygon
-      toggledBtn: undefined,
-      markers: [],
+
+      // polygon area
       polygon: {
         latlngs: [],
         style: { color: 'red', weight: 0 }
       },
+
+      // rect area
       rect: {
         bounds: [[0, 0], [0, 0]],
         style: { color: 'red', weight: 0 }
       },
-      showRadiusEditor: false
+
+      showRadiusEditor: false,
+      toggledBtn: undefined
     }
   },
   watch: {
@@ -238,6 +248,8 @@ export default {
 
     }
   },
+
+
 
   methods: {
     addMarker (markerInfo) {
@@ -343,12 +355,19 @@ export default {
       this.mapModifier = 1
     },
 
-    zoomUpdate (zoom) {
-      this.currentZoom = zoom
+    //MAP EVENTS
+
+    mapBoundsUpdate (bounds) {
+      console.debug("MAP BOUNDS: ");
+      console.debug(bounds);
     },
 
-    centerUpdate (center) {
+    mapCenterUpdate (center) {
       this.currentCenter = center
+    },
+
+    mapZoomUpdate (zoom) {
+      this.currentZoom = zoom
     }
   }
 }
