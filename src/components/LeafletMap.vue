@@ -77,7 +77,7 @@
             v-for="(item, index) in cellTowerMarkers"
             :key="'marker-' + index"
             :lat-lng="item.latlng"
-            :icon="cellTowerIcon"
+            :icon="baseStationIcon"
         />
         <!--    markers for drawing    -->
         <l-marker
@@ -89,15 +89,18 @@
         <l-circle
             :lat-lng="circle.center"
             :radius="circle.radius"
-            :l-style="circle.style"
+            :color="circle.style.color"
+            :weight="circle.style.weight"
         />
         <l-polygon
             :lat-lngs="polygon.latlngs"
-            :l-style="polygon.style"
+            :color="polygon.style.color"
+            :weight="polygon.style.weight"
         ></l-polygon>
         <l-rectangle
             :bounds="rect.bounds"
-            :l-style="rect.style"
+            :color="rect.style.color"
+            :weight="rect.style.weight"
         ></l-rectangle>
       </l-map>
     </div>
@@ -107,6 +110,8 @@
 <script>
 import { latLng, divIcon } from 'leaflet'
 import { LMap, LTileLayer, LCircle, LMarker, LPolygon, LRectangle } from 'vue2-leaflet'
+
+const queryTimeout = 1000
 
 export default {
   name: 'LeafletMap',
@@ -118,6 +123,24 @@ export default {
     LPolygon,
     LRectangle
   },
+
+  props: {
+    // array of base stations (cell towers)
+    baseStationArray: {
+      type: Array,
+      default: () => []
+    },
+    // array of cellphones
+    cellphoneArray: {
+      type: Array,
+      default: () => []
+    },
+    // show toolbar
+    showToolbar: {
+      type: Boolean,
+    }
+  },
+
   data () {
     return {
       // map
@@ -152,7 +175,7 @@ export default {
                   </g>
                 </svg>`
       }),
-      cellTowerIcon: divIcon({
+      baseStationIcon: divIcon({
         iconSize: [30, 30],
         iconAnchor: [15, 26],
         className: "marker",
@@ -358,6 +381,11 @@ export default {
     //MAP EVENTS
 
     mapBoundsUpdate (bounds) {
+      if (Date.now() - this.lastQueryTimeStamp < queryTimeout) {
+        return;
+      }
+
+      this.lastQueryTimeStamp = Date.now();
       console.debug("MAP BOUNDS: ");
       console.debug(bounds);
     },
