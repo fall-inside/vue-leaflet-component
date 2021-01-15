@@ -50,7 +50,10 @@
       >
         <v-icon small> mdi-eraser </v-icon>
       </v-btn>
-
+      <v-simple-checkbox
+          v-model="isDrawForArea"
+          label="Отображать маркеры только для выделенной области"
+      ></v-simple-checkbox>
     </v-toolbar>
     <div class="leaflet-map">
       <l-map
@@ -65,19 +68,12 @@
         <l-tile-layer
           :url="url"
         />
-        <!--    markers for cellphones    -->
+        <!--    markers    -->
         <l-marker
-            v-for="(item, index) in cellphoneMarkers"
+            v-for="(item, index) in markers"
             :key="'marker-' + index"
             :lat-lng="item.latlng"
             :icon="cellphoneIcon"
-        />
-        <!--    markers for cell towers    -->
-        <l-marker
-            v-for="(item, index) in cellTowerMarkers"
-            :key="'marker-' + index"
-            :lat-lng="item.latlng"
-            :icon="baseStationIcon"
         />
         <!--    markers for drawing    -->
         <l-marker
@@ -125,16 +121,6 @@ export default {
   },
 
   props: {
-    // array of base stations (cell towers)
-    baseStationArray: {
-      type: Array,
-      default: () => []
-    },
-    // array of cellphones
-    cellphoneArray: {
-      type: Array,
-      default: () => []
-    },
     // show toolbar
     showToolbar: {
       type: Boolean,
@@ -231,9 +217,12 @@ export default {
 
       // array for rect and polygon dots
       dotMarkers:[],
+
+      isDrawForArea: false, // false - show markers everywhere, true - show markers in selected area
       isDrawing: false,
       lastQueryTimeStamp: 0,
       mapModifier: 0, // 1 - rect, 2 - circle, 3 - polygon
+      noSelectedArea: true,
 
       // polygon area
       polygon: {
@@ -252,6 +241,9 @@ export default {
     }
   },
   watch: {
+    /**
+     * Наблюдает за выбором фигуры для рисования на тулбаре
+     */
     toggledBtn: function () {
       console.debug(this.toggledBtn);
       if (this.toggledBtn === undefined) {
@@ -268,23 +260,24 @@ export default {
             break;
         }
       }
-
     }
   },
-
-
 
   methods: {
     addMarker (markerInfo) {
       console.debug(markerInfo);
     },
 
+    /**
+     * Метод очистки карты от всех нарисованных на ней объектов
+     */
     clearMapArea () {
       console.debug('Remove all drawings');
 
       this.dotMarkers = [];
       this.isDrawing = false;
       this.mapModifier = 0;
+      this.noSelectedArea = true;
       this.toggledBtn = undefined;
 
       // clear circle
@@ -302,6 +295,13 @@ export default {
       this.polygon.latlngs = [];
     },
 
+    /**
+     * Метод рисования на карте.
+     * Для прямоугольника сначала рисует две вершины, а затем - сам прямоугольник.
+     * Для полигона рисует массив точек, которые можно соединить в фигуру.
+     * Для окружности - рисует окружность с заданным радиусом и центром в точке клика
+     * @param event - событие клика мыши на карте, которое содержит в себе координаты, необходимые для отрисовки
+     */
     drawArea (event) {
       if (!this.isDrawing) {
         return;
@@ -325,12 +325,14 @@ export default {
               }
               this.rect.style.weight = 2;
               this.dotMarkers = [];
+              this.noSelectedArea = false;
             }
           }
           break;
         case 2: {
             this.circle.center = [marker.latlng.lat, marker.latlng.lng];
             this.circle.style.weight = 2;
+            this.noSelectedArea = false;
           }
           break;
         case 3: {
@@ -340,7 +342,11 @@ export default {
       }
     },
 
+
     // create polygon based on dotMarkers
+    /**
+     * Метод объединяет отображенные на карте вершины полигона
+     */
     finishPolygon () {
       let latlngArray = [];
       for (let i = 0; i < this.dotMarkers.length; i++) {
@@ -349,8 +355,12 @@ export default {
       this.polygon.latlngs.push(latlngArray);
       this.polygon.style.weight = 2;
       this.dotMarkers = [];
+      this.noSelectedArea = false;
     },
 
+    /**
+     * Метод очищает карту от других фигур и определяет начало отрисовки окружности
+     */
     startDrawCircle () {
       console.debug('Start draw circle');
       if (this.isDrawing) {
@@ -360,6 +370,9 @@ export default {
       this.mapModifier = 2;
     },
 
+    /**
+     * Метод очищает карту от других фигур и определяет начало отрисовки полигона
+     */
     startDrawPolygon () {
       console.debug('Start draw polygon');
       if (this.isDrawing) {
@@ -369,6 +382,9 @@ export default {
       this.mapModifier = 3;
     },
 
+    /**
+     * Метод очищает карту от других фигур и определяет начало отрисовки прямоугольника
+     */
     startDrawRectangle () {
       console.debug('Start draw rect');
       if (this.isDrawing) {
@@ -380,14 +396,22 @@ export default {
 
     //MAP EVENTS
 
+    /**
+     * Метод получения границ видимой области карты.
+     * @param bounds
+     */
     mapBoundsUpdate (bounds) {
       if (Date.now() - this.lastQueryTimeStamp < queryTimeout) {
+        return;
+      }
+      if (!this.noSelectedArea && this.isDrawForArea) {
         return;
       }
 
       this.lastQueryTimeStamp = Date.now();
       console.debug("MAP BOUNDS: ");
       console.debug(bounds);
+      this.emit("showMarkers", bounds);
     },
 
     mapCenterUpdate (center) {
