@@ -326,6 +326,9 @@ export default {
               this.rect.style.weight = 2;
               this.dotMarkers = [];
               this.noSelectedArea = false;
+
+              // signal for getting markers
+              this.emit("showMarkersForRect",this.rect);
             }
           }
           break;
@@ -333,6 +336,9 @@ export default {
             this.circle.center = [marker.latlng.lat, marker.latlng.lng];
             this.circle.style.weight = 2;
             this.noSelectedArea = false;
+
+            // signal for getting markers
+            this.emit("showMarkersForCircle",this.circle);
           }
           break;
         case 3: {
@@ -356,6 +362,9 @@ export default {
       this.polygon.style.weight = 2;
       this.dotMarkers = [];
       this.noSelectedArea = false;
+
+      // signal for getting markers
+      this.emit("showMarkersForPolygon",this.polygon);
     },
 
     /**
@@ -408,10 +417,9 @@ export default {
         return;
       }
 
+      // signal for getting markers
+      this.emit("showAllMarkers", bounds);
       this.lastQueryTimeStamp = Date.now();
-      console.debug("MAP BOUNDS: ");
-      console.debug(bounds);
-      this.emit("showMarkers", bounds);
     },
 
     mapCenterUpdate (center) {
